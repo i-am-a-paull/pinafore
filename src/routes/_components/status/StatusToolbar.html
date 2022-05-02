@@ -164,14 +164,26 @@
       reblogAnimation: REBLOG_ANIMATION
     }),
     computed: {
+      loaded: ({ $currentVerifyCredentials }) => !!$currentVerifyCredentials,
+      verifyCredentials: ({ $currentVerifyCredentials }) => {
+        // return a placeholder while we're waiting on IndexedDB to load
+        // (https://github.com/nolanlawson/pinafore/issues/1076)
+        return $currentVerifyCredentials || {
+          display_name: '',
+          acct: '',
+          avatar: ONE_TRANSPARENT_PIXEL,
+          avatar_static: ONE_TRANSPARENT_PIXEL
+        }
+      },
+      currentAccountId: ({ verifyCredentials }) => (verifyCredentials && verifyCredentials.id),
       replyLabel: ({ inReplyToId }) => (
         inReplyToId ? 'intl.replyToThread' : 'intl.reply'
       ),
       replyIcon: ({ inReplyToId }) => inReplyToId ? '#fa-reply-all' : '#fa-reply',
-      reblogLabel: ({ visibility }) => {
+      reblogLabel: ({ visibility, status, currentAccountId }) => {
         switch (visibility) {
           case 'private':
-            return 'intl.cannotReblogFollowersOnly'
+            return (status.account.id == currentAccountId) ? 'intl.reblog' : 'intl.cannotReblogFollowersOnly'
           case 'direct':
             return 'intl.cannotReblogDirectMessage'
           default:
@@ -188,8 +200,8 @@
             return '#fa-retweet'
         }
       },
-      reblogDisabled: ({ visibility }) => {
-        return visibility === 'private' || visibility === 'direct'
+      reblogDisabled: ({ visibility, status, currentAccountId }) => {
+        return visibility === 'private' && status.account.id !== currentAccountId || visibility === 'direct'
       },
       reblogged: ({ originalStatusId, $currentStatusModifications, originalStatus }) => {
         if ($currentStatusModifications && originalStatusId in $currentStatusModifications.reblogs) {
